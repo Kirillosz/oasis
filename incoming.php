@@ -75,6 +75,7 @@ $new_item = $factory->createItem();
     $new_item->set("UF_CRM_18_1701951036443", $arr['OAZIS']['EXTRA_INFO']);
     $new_item->set("UF_CRM_18_1701951058152", $arr['OAZIS']['EXTRA_INFO_PUBLIC']);
   $new_item->set("UF_CRM_18_1701859759995", $arr['OAZIS']['OASIS_ID']);
+  $new_item->set("UF_CRM_18_1702382278676", $arr['OAZIS']['RESULTS_TABLE']); 
     //если не пусто страна
   if (!empty($arr['OAZIS']['COUNTRY'][0]['OASIS_ID']) || $arr['OAZIS']['COUNTRY'][0]['OASIS_ID'] != ''):
 $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_1838");
@@ -169,15 +170,18 @@ if (!empty($arr['OAZIS']['USER_TABLE']) || $arr['OAZIS']['USER_TABLE'] != ''):
             //"ASSIGNED_BY_ID"
             //"POST"
         );
-        $contact = new CCrmContact();
+        $contact = new CCrmContact(false);
         //ищем контакт среди имеющихся, если нет то создаем новый
         $res = CCrmContact::GetList($arOrder = ['ID'=>'DESC'], $arFilter = ['UF_CRM_1703446692577'=>
          $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['OASIS_ID'], 'CHECK_PERMISSIONS'=>'N'], $arSelect = ['ID']);
             while($cont = $res->fetch()):
         $contId = IntVal($cont['ID']);
         endwhile;
-            if($cont['ID'] != '' || !empty($cont['ID'])):
-        if($contactID = $contact->Update($contId, $arNewContact)):
+        if($cont['ID'] != '' || !empty($cont['ID']) || $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['RASU_ID'] != '' || !empty($arr['OAZIS']['USER_TABLE'][$n]['PERSON']['RASU_ID'])):
+            if(!empty($arr['OAZIS']['USER_TABLE'][$n]['PERSON']['RASU_ID']) || $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['RASU_ID'] != ''):
+                $contId = $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['RASU_ID'];
+            endif;
+        if($contactID = $contact->Update($contId, $arNewContact, true, true, array('DISABLE_USER_FIELD_CHECK' => false))):
             file_put_contents(getcwd() . '/log/successUpdateIblockElement_'.$date.'.log', 'success updates element участники контакт '.$contactID, FILE_APPEND);
         else:
             file_put_contents(getcwd() . '/log/failedUpdateIblockElement_'.$date.'.log', 'failed update element участники контакт '.$contId, FILE_APPEND);
@@ -211,12 +215,32 @@ if (!empty($arr['OAZIS']['USER_TABLE']) || $arr['OAZIS']['USER_TABLE'] != ''):
         endif;
         endif;
         
-        if($arr['OAZIS']['USER_TABLE'][$n]['COMPANY'] || $arr['OAZIS']['USER_TABLE'][$n]['COMPANY'] != ''):
+        if(!empty($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']) || $arr['OAZIS']['USER_TABLE'][$n]['COMPANY'] != ''):
 //тут нужен if company есть
+//Если указаны страны в компаниях участниках
+if($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['COUNTRY'] != '' || !empty($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['COUNTRY'])):
+    foreach($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['COUNTRY'] as $compCountry):
+        $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_1838");
+        $arFilter = Array("IBLOCK_ID"=>190, "PROPERTY_1838_VALUE"=> $compCountry['OASIS_ID']);
+        $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize"=>9999), $arSelect);
+        while($ob = $res->GetNextElement()) 
+        { 
+         $arFields = $ob->GetFields();
+         $compCountries[] = $arFields['ID'];
+        }
+    endforeach;
+    endif;
+    $compCountries = array_unique($compCountries);
 $arNewCompany=array(
     //"UF_CRM_1703446692577" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['OASIS_ID'],
     //"UF_CRM_1703516205221" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NSI_ID'],
     "TITLE" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NAME'],
+    "UF_CRM_1703583674567" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['OASIS_ID'],
+    "UF_CRM_1703583687134" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NSI_ID'],
+    "EMAIL" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['EMAIL'],
+    "PHONE" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['PHONE'],
+    "UF_CRM_1703578917" =>  $compCountries,
+    //вывести какие то теги TAGS   UF_CRM_1703578917
     //"LAST_NAME" => $arr['OAZIS']['USER_TABLE'][$n]['COPMANY']['LAST_NAME'],
     //"SECOND_NAME" => $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['SECOND_NAME'],
     //"DISPLAY_NAME" => $arr['OAZIS']['USER_TABLE'][$n]['PERSON']['NAME'],
@@ -228,18 +252,21 @@ $arNewCompany=array(
         //"ASSIGNED_BY_ID"
         //"POST"
     );
-        $company = new CCrmCompany();
+        $company = new CCrmCompany(false);
         //ищем компанию среди имеющихся, если нет то создаем новую
         $res = CCrmCompany::GetList($arOrder = ['ID'=>'DESC'], $arFilter = ['UF_CRM_1698843074694'=>
          $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['OASIS_ID'], 'CHECK_PERMISSIONS'=>'N'], $arSelect = ['ID']);
             while($comp = $res->fetch()):
         $compId = IntVal($comp['ID']);
         endwhile;
-            if($comp['ID'] != '' || !empty($comp['ID'])):
-        if($companyID = $contact->Update($compId, $arNewCompany)):
+            if($comp['ID'] != '' || !empty($comp['ID']) || $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['RASU_ID'] != '' || !empty($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['RASU_ID'])):
+                if(!empty($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['RASU_ID']) || $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['RASU_ID'] != ''):
+                    $compId = $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['RASU_ID'];
+                endif;
+        if($companyID = $company->Update($compId, $arNewCompany, true, true, array('DISABLE_USER_FIELD_CHECK' => false))):
             file_put_contents(getcwd() . '/log/successUpdateIblockElement_'.$date.'.log', 'success updates element участники компания '.$companyID, FILE_APPEND);
         else:
-            file_put_contents(getcwd() . '/log/failedUpdateIblockElement_'.$date.'.log', 'failed update element участники компания '.$compId, FILE_APPEND);
+            file_put_contents(getcwd() . '/log/failedUpdateIblockElement_'.$date.'.log', 'failed update element участники компания '.$compId.': '.$company->LAST_ERROR, FILE_APPEND);
         endif;
         $companyID = $compId;
             else:
@@ -251,13 +278,40 @@ $arNewCompany=array(
         endif;
     endif;
 
+
+    //записываем роли, тип и отдел участника
+    $spravochniks = ['ROLE' => 193, 'TYPE' => 192, 'OTDEL' => 194];
+    $props = ['ROLE' => ['OASIS_ID'=>'1849'], 'TYPE' => ['OASIS_ID'=>'1848'], 'OTDEL' => ['OASIS_ID'=>'1850', 'POSITION'=>'1852']];
+    foreach($spravochniks as $sprav => $value):
+        echo $sprav;
+        $arr['OAZIS']['USER_TABLE'][$n][$sprav]['OASIS_ID'];
+        $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME'];
+        if(key($spravochniks) == 'OTDEL'):
+            $arr['OAZIS']['USER_TABLE'][$n][$sprav]['POSITION'];
+        endif;
+if($sprav == 'OTDEL'):
+ $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_".$props[$sprav]['OASIS_ID'], "PROPERTY_".$props[$sprav]['POSITION']);
+else:
+        $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_".$props[$sprav]['OASIS_ID']);
+endif;
+        $arFilter = Array("IBLOCK_ID"=>$value, "PROPERTY_".$props[$sprav]['OASIS_ID']."_VALUE"=> $arr['OAZIS']['USER_TABLE'][$n][$sprav]['OASIS_ID']);
+        $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize"=>9999), $arSelect);
+        while($ob = $res->GetNextElement()) 
+        { 
+         $arFields = $ob->GetFields();  
+        }
+        if(!empty($arFields['ID'] || $arFields['ID'] != '')):
+    $spr[$sprav] = $arFields['ID'];
+        endif;
+    endforeach;
+
         //собираем участника
         $name = "Участник № ".$n." по мероприятию ID-".$arr['OAZIS']['OASIS_ID']." на ".$arr['OAZIS']['DATE'];
 	$prop['1888'] = $contactID;
     $prop['1887'] = $companyID;
-	//$prop['1883'] = $arr['OAZIS']['PURPOSE'][$n]['RESULT'];
-	//$prop['1884'] = $arr['OAZIS']['PURPOSE'][$n]['FAILS'];
-	//$prop['1885'] = $arr['OAZIS']['PURPOSE'][$n]['LEARNED'];
+	$prop['1880'] = $spr['OTDEL'];
+    $prop['1878'] = $spr['TYPE'];
+    $prop['1877'] = $spr['ROLE'];
 	$prop['1881'] = $element_id;
 $n++;
 
