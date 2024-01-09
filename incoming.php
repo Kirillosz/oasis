@@ -39,7 +39,7 @@ endif;
 
 //global $arr;
 //создаем фабрики
-if($arr['OAZIS']['USER_TABLE']) {
+if(!empty($arr['OAZIS']['USER_TABLE']) || $arr['OAZIS']['USER_TABLE'] != '') {
     //Создание фабрики 
     //use Bitrix\Crm\Service\Container;s
     Loader::IncludeModule("crm");
@@ -58,6 +58,7 @@ $elementExistsId = $elementExists[0]["id"];
 $mode = 'edit';
 $new_item = $factory->getItem($elementExistsId);
 $element_id = $elementExistsId;
+
 	else:
 	//если нет создаем
 $mode = 'add';
@@ -205,13 +206,13 @@ if (!empty($arr['OAZIS']['USER_TABLE']) || $arr['OAZIS']['USER_TABLE'] != ''):
         }
         if($arFields['ID'] != '' || !empty($arFields['ID'])):
         $USER_TABLE_ID = $el->Update($arFields['ID'], $arLoadProductArray);
-        file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success updated element участники '.$arFields['ID'], FILE_APPEND);
+        file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success updated element цели '.$arFields['ID'], FILE_APPEND);
         //если нет то добавляем
         else: 
             if($USER_TABLE_ID = $el->Add($arLoadProductArray)):
-            file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success added element участники '.$USER_TABLE_ID, FILE_APPEND);
+            file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success added element цели '.$USER_TABLE_ID, FILE_APPEND);
         else:
-            file_put_contents(getcwd() . '/log/failedAddedIblockElement_'.$date.'.log', 'failed added element участники '.$el->LAST_ERROR, FILE_APPEND);
+            file_put_contents(getcwd() . '/log/failedAddedIblockElement_'.$date.'.log', 'failed added element цели '.$el->LAST_ERROR, FILE_APPEND);
         endif;
         endif;
         
@@ -232,8 +233,8 @@ if($arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['COUNTRY'] != '' || !empty($arr['O
     endif;
     $compCountries = array_unique($compCountries);
 $arNewCompany=array(
-    //"UF_CRM_1703446692577" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['OASIS_ID'],
-    //"UF_CRM_1703516205221" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NSI_ID'],
+    "UF_CRM_1698842306306" => true,
+    "UF_CRM_1698842292428" => true,
     "TITLE" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NAME'],
     "UF_CRM_1703583674567" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['OASIS_ID'],
     "UF_CRM_1703583687134" => $arr['OAZIS']['USER_TABLE'][$n]['COMPANY']['NSI_ID'],
@@ -280,16 +281,10 @@ $arNewCompany=array(
 
 
     //записываем роли, тип и отдел участника
-    $spravochniks = ['ROLE' => 193, 'TYPE' => 192, 'OTDEL' => 194];
-    $props = ['ROLE' => ['OASIS_ID'=>'1849'], 'TYPE' => ['OASIS_ID'=>'1848'], 'OTDEL' => ['OASIS_ID'=>'1850', 'POSITION'=>'1852']];
+    $spravochniks = ['ROLE' => 193, 'TYPE' => 192, 'DEPARTMENT' => 194];
+    $props = ['ROLE' => ['OASIS_ID'=>'1849'], 'TYPE' => ['OASIS_ID'=>'1848'], 'DEPARTMENT' => ['OASIS_ID'=>'1850', 'POSITION'=>'1852']];
     foreach($spravochniks as $sprav => $value):
-        echo $sprav;
-        $arr['OAZIS']['USER_TABLE'][$n][$sprav]['OASIS_ID'];
-        $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME'];
-        if(key($spravochniks) == 'OTDEL'):
-            $arr['OAZIS']['USER_TABLE'][$n][$sprav]['POSITION'];
-        endif;
-if($sprav == 'OTDEL'):
+        if($sprav == 'DEPARTMENT'):
  $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_".$props[$sprav]['OASIS_ID'], "PROPERTY_".$props[$sprav]['POSITION']);
 else:
         $arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_".$props[$sprav]['OASIS_ID']);
@@ -298,10 +293,42 @@ endif;
         $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize"=>9999), $arSelect);
         while($ob = $res->GetNextElement()) 
         { 
-         $arFields = $ob->GetFields();  
+         $arFieldsSprav = $ob->GetFields();  
         }
-        if(!empty($arFields['ID'] || $arFields['ID'] != '')):
-    $spr[$sprav] = $arFields['ID'];
+        if(!empty($arFieldsSprav['ID'] || $arFieldsSprav['ID'] != '' || isset($arFieldsSprav['ID']))):
+    $methodVar = 'Update';
+    $spr[$sprav] = $arFieldsSprav['ID'];
+ unset($arFieldsSprav);
+ $elem = new CIBlockElement();
+$PROP = array();
+$PROP[$props[$sprav]['OASIS_ID']] = $arr['OAZIS']['USER_TABLE'][$n][$sprav]['OASIS_ID'];
+	//$PROP[$props[key($spravochniks)]['NAME']] = $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME']; 
+ if($sprav == 'DEPARTMENT'):
+$PROP[$props[$sprav]['POSITION']] = $arr['OAZIS']['USER_TABLE'][$n][$sprav]['POSITION']; 
+endif;
+$arLoad = array("ACTIVE" => "Y", "PROPERTY_VALUES" => $PROP, "NAME" => $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME']);
+if($NEW_SPRAV_ELEM = $elem->$methodVar($spr[$sprav] ,$arLoad)):
+    if($NEW_SPRAV_ELEM != 1):
+$spr[$sprav] = $NEW_SPRAV_ELEM;
+    endif; 
+file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success added spravochnik element '.$sprav.' '.$NEW_SPRAV_ELEM.' '.$props[$sprav]['OASIS_ID'], FILE_APPEND);
+else:
+file_put_contents(getcwd() . '/log/failedAddedIblockElement_'.$date.'.log', 'failed added spravochnik element '.$sprav.' '.$elem->LAST_ERROR, FILE_APPEND);
+endif;
+	else:
+        $methodVar = 'Add';
+$elem = new CIBlockElement();
+$PROP = array();
+$PROP[$props[$sprav]['OASIS_ID']] = $arr['OAZIS']['USER_TABLE'][$n][$sprav]['OASIS_ID'];
+	//$PROP[$props[key($spravochniks)]['NAME']] = $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME']; 
+$arLoad = array("IBLOCK_ID" => $value, "ACTIVE" => "Y", "PROPERTY_VALUES" => $PROP, "NAME" => $arr['OAZIS']['USER_TABLE'][$n][$sprav]['NAME']);
+if($NEW_SPRAV_ELEM = $elem->$methodVar($arLoad)):
+$spr[$sprav] = $NEW_SPRAV_ELEM;
+file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success added spravochnik element '.$sprav.' '.$NEW_SPRAV_ELEM.' '.$props[$sprav]['OASIS_ID'], FILE_APPEND);
+else:
+file_put_contents(getcwd() . '/log/failedAddedIblockElement_'.$date.'.log', 'failed added spravochnik element '.$sprav.' '.$elem->LAST_ERROR, FILE_APPEND);
+endif;
+
         endif;
     endforeach;
 
@@ -309,7 +336,7 @@ endif;
         $name = "Участник № ".$n." по мероприятию ID-".$arr['OAZIS']['OASIS_ID']." на ".$arr['OAZIS']['DATE'];
 	$prop['1888'] = $contactID;
     $prop['1887'] = $companyID;
-	$prop['1880'] = $spr['OTDEL'];
+	$prop['1880'] = $spr['DEPARTMENT'];
     $prop['1878'] = $spr['TYPE'];
     $prop['1877'] = $spr['ROLE'];
 	$prop['1881'] = $element_id;
@@ -339,11 +366,11 @@ $n++;
         $res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize"=>9999), $arSelect);
         while($ob = $res->GetNextElement()) 
         { 
-         $arFields = $ob->GetFields();  
+         $arFieldsMembers = $ob->GetFields();  
         }
-        if($arFields['ID'] != '' || !empty($arFields['ID'])):
-        $USER_TABLE_ID = $el->Update($arFields['ID'], $arLoadProductArray);
-        file_put_contents(getcwd() . '/log/successAddedIblockElement_'.$date.'.log', 'success updated element участники '.$arFields['ID'], FILE_APPEND);
+        if($arFieldsMembers['ID'] != '' || !empty($arFieldsMembers['ID'])):
+        $USER_TABLE_ID = $el->Update($arFieldsMembers['ID'], $arLoadProductArray);
+        file_put_contents(getcwd() . '/log/successUpdatedIblockElement_'.$date.'.log', 'success updated element участники '.$arFieldsMembers['ID'], FILE_APPEND);
         //если нет то добавляем
         else: 
             if($USER_TABLE_ID = $el->Add($arLoadProductArray)):
@@ -354,50 +381,7 @@ $n++;
         endif;
 
 endwhile;
-//если не пусто роль - ТУТ ОШИБКА
-	/* if (!empty($arr['OAZIS']['USER_TABLE'][$n]['ROLE']['OASIS_ID']) || $arr['OAZIS']['USER_TABLE'][$n]['OASIS_ID'] != ''):
-$arSelect = Array("ID", "IBLOCK_ID", "NAME", "DATE_ACTIVE_FROM", "PROPERTY_1849");
-$arFilter = Array("IBLOCK_ID"=>IntVal(193), "PROPERTY_1849_VALUE"=>IntVal($arr['OAZIS']['COUNTRY'][$n]['OASIS_ID']));
-$res = CIBlockElement::GetList(Array(), $arFilter, false, Array("nPageSize"=>9999), $arSelect);
-while($ob = $res->GetNextElement()) 
-{ 
- $arFields = $ob->GetFields();  
-}
- $el = new CIBlockElement;
-$el->Update($PRODUCT_ID, array('1877' => $arFields['ID']);
-endif; */
-
 endif;
-    /*
-    //$new_item->set('COMPANY_ID', $arComp['ID']); //Привязка к компании
-    function createIblockElement {
-    Loader::includeModule('iblock');
-    //добавляем эл инфоблока
-    $new_iblock_el_name = 'Hello again!';
-    $el = new CIBlockElement;
-    $PROP = array();
-    //$PROP[1881] = $element_id;  // свойству с кодом 12 присваиваем значение "Белый"
-    //$PROP[3] = 38;        // свойству с кодом 3 присваиваем значение 38
-    $arLoadProductArray = Array(
-        //"MODIFIED_BY"    => $USER->GetID(), // элемент изменен текущим пользователем
-        //"IBLOCK_SECTION_ID" => false,          // элемент лежит в корне раздела
-        "IBLOCK_ID"      => 190,
-        "PROPERTY_VALUES"=> $PROP,
-        "NAME"           => '213',
-        "ACTIVE"         => "Y",            // активен
-        "PREVIEW_TEXT"   => $new_iblock_el_name,
-        //"DETAIL_TEXT"    => "текст для детального просмотра",
-        //"DETAIL_PICTURE" => CFile::MakeFileArray($_SERVER["DOCUMENT_ROOT"]."/image.gif")
-    );
-    if($PRODUCT_ID = $el->Add($arLoadProductArray))
-        echo "New ID of iblock element: ".$PRODUCT_ID;
-    else
-        echo "Error: ".$el->LAST_ERROR;
-    
-        file_put_contents(getcwd() . '/log/succesAddIblockElement_'.$date.'.log', 'success added element'.$element_id, FILE_APPEND);
-}
-        */
-       
     }
     else {
         file_put_contents(getcwd() . '/log/failedAddElement_'.$date.'.log', 'failed added element'.$element_id, FILE_APPEND);
